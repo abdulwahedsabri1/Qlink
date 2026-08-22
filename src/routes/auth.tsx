@@ -102,7 +102,7 @@ function AuthPage() {
           );
           return;
         }
-        if (data.session) {
+        if (data.session && data.user) {
           await supabase.from("shops").insert({
             owner_id: data.user.id,
             name: businessName.trim(),

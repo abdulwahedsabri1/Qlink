@@ -107,7 +107,7 @@ const BUSINESS_TYPES = [
 ];
 
 export function BusinessPreviewSection() {
-  const [activeTab, setActiveTab] = useState(BUSINESS_TYPES[0].id);
+  const [activeTab, setActiveTab] = useState(BUSINESS_TYPES[0]?.id || "");
   const [cart, setCart] = useState<{name: string, price: number}[]>([
     { name: "Patthar Ka Gosht", price: 420 },
     { name: "Hyderabadi Dum Biryani", price: 340 }
