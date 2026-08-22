@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   buildWhatsAppOrder,
   detectDevice,
@@ -16,9 +17,15 @@ import {
   planOf,
   shopTiming,
   shopSocialLink,
+  shopDeliveryEnabled,
+  shopTakeawayEnabled,
+  shopOnTableEnabled,
+  shopTheme,
+  THEME_CONFIG,
   type CartLine,
   type MenuItem,
   type Shop,
+  type ThemeId,
 } from "@/lib/shop";
 
 export const Route = createFileRoute("/shop/$slug")({
@@ -29,7 +36,7 @@ export const Route = createFileRoute("/shop/$slug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Menu unavailable — MenuQR Pro" }, { name: "robots", content: "noindex" }] };
+      return { meta: [{ title: "Menu unavailable — My QR Link" }, { name: "robots", content: "noindex" }] };
     }
     const { shop } = loaderData;
     const title = `${shop.name} — Menu`;
@@ -52,11 +59,11 @@ export const Route = createFileRoute("/shop/$slug")({
 
 function Fallback({ text }: { text: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-6 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-[#100C09] px-6 text-center text-white">
       <div>
         <h1 className="font-display text-2xl font-semibold">Menu unavailable</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{text}</p>
-        <Button asChild className="mt-6">
+        <p className="mt-2 text-sm text-white/60">{text}</p>
+        <Button asChild className="mt-6 bg-[#FFC45A] text-[#100C09] hover:bg-[#FFC45A]/90">
           <Link to="/">Go home</Link>
         </Button>
       </div>
@@ -76,7 +83,16 @@ function PublicMenu() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
-  const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "on_table">("on_table");
+  
+  const themeId = shopTheme(shop);
+  const theme = THEME_CONFIG[themeId];
+  
+  const isDelivery = shopDeliveryEnabled(shop);
+  const isTakeaway = shopTakeawayEnabled(shop);
+  const isOnTable = shopOnTableEnabled(shop);
+  
+  const defaultOrderType = isDelivery ? "delivery" : isTakeaway ? "takeaway" : isOnTable ? "on_table" : "delivery";
+  const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "on_table">(defaultOrderType);
   
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryCity, setDeliveryCity] = useState("");
@@ -98,7 +114,6 @@ function PublicMenu() {
               setDeliveryCity(addr.city || addr.town || addr.village || addr.county || "");
               setDeliveryPincode(addr.postcode || "");
               
-              // Build a decent street address
               const streetParts = [
                 addr.house_number, 
                 addr.road || addr.street, 
@@ -108,7 +123,6 @@ function PublicMenu() {
               const streetAddress = streetParts.length > 0 ? streetParts.join(", ") : data.display_name;
               setDeliveryAddress(streetAddress);
             } else {
-              // Fallback to Google Maps link if reverse geocoding fails
               const link = `https://maps.google.com/?q=${latitude},${longitude}`;
               setDeliveryAddress(`GPS: ${link}`);
             }
@@ -160,106 +174,122 @@ function PublicMenu() {
     setCart((c) => ({ ...c, [id]: Math.max(0, (c[id] ?? 0) + delta) }));
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+  };
+
+  const itemAnim = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
   return (
-    <div className="min-h-screen bg-muted/30 pb-32">
+    <div className={`min-h-screen ${theme.bg} ${theme.text} pb-32 font-sans ${theme.selection} transition-colors duration-500`}>
       {/* Banner */}
       <header className="relative isolate h-56 w-full overflow-hidden sm:h-72">
         {shop.cover_url ? (
-          <img
-            src={shop.cover_url}
-            alt={`${shop.name} cover`}
-            className="absolute inset-0 size-full object-cover object-center"
-          />
+          <img src={shop.cover_url} alt={`${shop.name} cover`} className="absolute inset-0 size-full object-cover object-center" />
         ) : (
-          <div className="absolute inset-0 bg-hero-gradient" />
+          <div className={`absolute inset-0 ${theme.accent} opacity-10`} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className={`absolute inset-0 bg-gradient-to-t ${theme.headerGradient} to-transparent`} />
       </header>
 
-      <div className="mx-auto -mt-20 max-w-2xl px-4">
-        <section className="rounded-3xl border bg-card/95 p-5 shadow-lg backdrop-blur">
+      <div className="mx-auto -mt-20 max-w-4xl px-4 relative z-10">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`rounded-xl border ${theme.border} ${theme.card} p-5 backdrop-blur-lg transition-colors duration-500`}
+        >
           <div className="flex items-center gap-4">
-            <div className="size-16 shrink-0 overflow-hidden rounded-2xl border bg-muted">
+            <div className={`size-16 shrink-0 overflow-hidden rounded-xl border ${theme.border} ${theme.bg}`}>
               {shop.logo_url ? (
                 <img src={shop.logo_url} alt={`${shop.name} logo`} className="size-full object-cover" />
               ) : (
-                <span className="grid size-full place-items-center text-muted-foreground">
+                <span className={`grid size-full place-items-center ${theme.textMuted}`}>
                   <Store className="size-6" />
                 </span>
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="truncate font-display text-2xl font-semibold leading-tight">{shop.name}</h1>
-              <p className="mt-0.5 truncate text-sm text-muted-foreground">{shop.tagline ?? shop.niche}</p>
+              <h1 className={`truncate font-display text-2xl font-bold leading-tight ${theme.text}`}>{shop.name}</h1>
+              <p className={`mt-1 truncate text-sm ${theme.textMuted}`}>{shop.tagline ?? shop.niche}</p>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          <div className={`mt-5 flex flex-wrap gap-x-6 gap-y-3 text-[13px] ${theme.textMuted}`}>
             {shop.address && (
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="size-4 shrink-0" /> {shop.address}
+              <span className="inline-flex items-center gap-2">
+                <MapPin className={`size-4 shrink-0 ${theme.accentText}`} /> {shop.address}
               </span>
             )}
             {shop.phone && (
-              <a href={`tel:${shop.phone}`} className="inline-flex items-center gap-1.5 text-primary">
+              <a href={`tel:${shop.phone}`} className={`inline-flex items-center gap-2 transition-colors ${theme.textMutedHover}`}>
                 <Phone className="size-4" /> {shop.phone}
               </a>
             )}
             {shopTiming(shop) && (
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className="size-4 shrink-0" /> {shopTiming(shop)}
+              <span className="inline-flex items-center gap-2">
+                <Clock className={`size-4 shrink-0 ${theme.accentText}`} /> {shopTiming(shop)}
               </span>
             )}
             {shopSocialLink(shop) && (
-              <a href={shopSocialLink(shop)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-primary">
+              <a href={shopSocialLink(shop)} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 transition-colors ${theme.textMutedHover}`}>
                 <LinkIcon className="size-4 shrink-0" /> Social Media
               </a>
             )}
           </div>
-        </section>
+        </motion.section>
 
-        <div className="no-scrollbar sticky top-0 z-10 -mx-4 mt-5 flex gap-2 overflow-x-auto bg-muted/30 px-4 py-2 backdrop-blur">
-          <Chip label="All" active={active === "all"} onClick={() => setActive("all")} />
+        {/* Sticky Categories */}
+        <div className={`no-scrollbar sticky top-0 z-40 -mx-4 mt-6 flex gap-3 overflow-x-auto ${theme.bg}/90 px-4 py-4 backdrop-blur-md border-b ${theme.border}`}>
+          <Chip label="All" active={active === "all"} onClick={() => setActive("all")} theme={theme} />
           {categories.map((c) => (
-            <Chip key={c.id} label={c.name} active={active === c.id} onClick={() => setActive(c.id)} />
+            <Chip key={c.id} label={c.name} active={active === c.id} onClick={() => setActive(c.id)} theme={theme} />
           ))}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {/* Menu Grid */}
+        <motion.div 
+          key={active}
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4"
+        >
           {visible.length === 0 && (
-            <p className="col-span-full rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
+            <div className={`col-span-full rounded-xl border ${theme.border} ${theme.card} p-8 text-center text-sm ${theme.textMuted}`}>
               No items in this section yet.
-            </p>
+            </div>
           )}
           {visible.map((item) => (
-            <article key={item.id} className="flex flex-col rounded-2xl border bg-card shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-              <div className="relative aspect-square w-full bg-muted">
+            <motion.article 
+              variants={itemAnim}
+              key={item.id} 
+              className={`flex flex-col overflow-hidden rounded-xl border ${theme.border} ${theme.card} transition-all`}
+            >
+              <div className={`relative aspect-square w-full ${theme.bg}`}>
                 {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    loading="lazy"
-                    className="size-full object-cover"
-                  />
+                  <img src={item.image_url} alt={item.name} loading="lazy" className="size-full object-cover transition-transform duration-500 hover:scale-105" />
                 ) : (
-                  <div className="flex size-full flex-col items-center justify-center text-muted-foreground">
-                    <Store className="size-8 opacity-20" />
+                  <div className="flex size-full flex-col items-center justify-center">
+                    <Store className={`size-8 ${theme.textMuted} opacity-20`} />
                   </div>
                 )}
               </div>
-              <div className="flex flex-1 flex-col p-3">
-                <h2 className="line-clamp-2 text-sm font-medium leading-tight">{item.name}</h2>
-                {item.description && (
-                  <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{item.description}</p>
-                )}
+              
+              <div className="flex flex-1 flex-col p-4">
+                <h2 className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</h2>
+                {item.description && <p className={`mt-1.5 line-clamp-1 text-xs ${theme.textMuted}`}>{item.description}</p>}
                 
-                <div className="mt-auto pt-3 flex items-end justify-between gap-2">
+                <div className="mt-auto pt-4 flex items-end justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="whitespace-nowrap text-sm font-bold">
+                    <p className={`whitespace-nowrap font-bold text-[15px] ${theme.text}`}>
                       {money(item.discount_price ?? item.price, shop.currency)}
                     </p>
                     {item.discount_price !== null && item.discount_price !== item.price && (
-                      <p className="text-[10px] text-muted-foreground line-through">
+                      <p className={`text-[11px] ${theme.textMuted} line-through`}>
                         {money(item.price, shop.currency)}
                       </p>
                     )}
@@ -267,126 +297,140 @@ function PublicMenu() {
                   
                   {canOrder ? (
                     (cart[item.id] ?? 0) > 0 ? (
-                      <div className="flex h-8 items-center rounded-lg border bg-background overflow-hidden text-sm shadow-sm">
-                        <button aria-label="Remove one" className="flex h-full items-center justify-center bg-muted/50 px-2 transition-colors hover:bg-muted" onClick={() => change(item.id, -1)}>
-                          <Minus className="size-3" />
+                      <div className={`flex h-8 items-center rounded-md border ${theme.border} ${theme.cartBtn} overflow-hidden text-sm`}>
+                        <button aria-label="Remove one" className={`flex h-full items-center justify-center px-2.5 ${theme.accentText} ${theme.cartBtnHover} transition-colors`} onClick={() => change(item.id, -1)}>
+                          <Minus className="size-3.5" />
                         </button>
-                        <span className="w-5 text-center text-xs font-semibold">{cart[item.id]}</span>
-                        <button aria-label="Add one" className="flex h-full items-center justify-center bg-muted/50 px-2 transition-colors hover:bg-muted" onClick={() => change(item.id, 1)}>
-                          <Plus className="size-3" />
+                        <span className={`w-5 text-center text-xs font-bold ${theme.accentText}`}>{cart[item.id]}</span>
+                        <button aria-label="Add one" className={`flex h-full items-center justify-center px-2.5 ${theme.accentText} ${theme.cartBtnHover} transition-colors`} onClick={() => change(item.id, 1)}>
+                          <Plus className="size-3.5" />
                         </button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" className="h-8 rounded-lg px-3 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/5 hover:text-primary shadow-sm" onClick={() => change(item.id, 1)}>
-                        ADD
+                      <Button size="sm" className={`h-8 rounded-md px-4 text-xs font-bold uppercase tracking-wider transition-all ${theme.addBtn} ${theme.addBtnHover}`} onClick={() => change(item.id, 1)}>
+                        Add
                       </Button>
                     )
                   ) : null}
                 </div>
               </div>
-            </article>
+            </motion.article>
           ))}
+        </motion.div>
+        
+        <div className={`border-t ${theme.border} mt-10 pt-6 pb-4 text-center text-xs ${theme.textMuted}`}>
+          Powered by <Link to="/" className={`${theme.accentText} font-display font-medium hover:underline`}>My QR Link</Link>
         </div>
-
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          Powered by <Link to="/" className="text-primary">MenuQR Pro</Link>
-        </p>
       </div>
 
-      {canOrder && lines.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-50 p-4 pb-6 animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <div 
-            className="mx-auto flex max-w-md cursor-pointer items-center justify-between overflow-hidden rounded-2xl bg-primary p-3 text-primary-foreground shadow-xl shadow-black/20 transition-transform active:scale-[0.98]" 
-            onClick={() => setIsCartOpen(true)}
+      {/* Floating Cart Button */}
+      <AnimatePresence>
+        {canOrder && lines.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className="fixed inset-x-0 bottom-0 z-50 p-4 pb-6 pointer-events-none"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-white/20">
-                <ShoppingBag className="size-6 text-primary-foreground" />
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={`mx-auto flex max-w-[400px] cursor-pointer items-center justify-between overflow-hidden rounded-xl p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] pointer-events-auto ${theme.cartBg} ${theme.cartText}`} 
+              onClick={() => setIsCartOpen(true)}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`flex size-11 shrink-0 items-center justify-center rounded-lg bg-black/10`}>
+                  <ShoppingBag className="size-5" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold opacity-90 uppercase tracking-wide">
+                    {lines.length} item{lines.length > 1 ? "s" : ""}
+                  </span>
+                  <span className="text-lg font-bold tracking-tight">
+                    {money(total, shop.currency)}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-primary-foreground/90">
-                  {lines.length} item{lines.length > 1 ? "s" : ""}
-                </span>
-                <span className="text-lg font-bold tracking-tight">
-                  {money(total, shop.currency)}
-                </span>
+              <div className="flex items-center gap-1 pl-4 pr-2 text-base font-bold tracking-tight">
+                View Cart <ChevronRight className="size-5" />
               </div>
-            </div>
-            <div className="flex items-center gap-1 pl-4 pr-1 text-[17px] font-semibold tracking-tight">
-              View Cart <ChevronRight className="size-5" />
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Cart & Checkout Modal */}
       <Dialog open={isCartOpen} onOpenChange={setIsCartOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+        <DialogContent className={`max-h-[90vh] overflow-y-auto sm:max-w-md ${theme.card} ${theme.text} ${theme.border}`}>
           <DialogHeader>
-            <DialogTitle>Your Order / Cart</DialogTitle>
+            <DialogTitle className="text-xl font-display font-bold">Your Order</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {/* Cart Items */}
+          <div className="space-y-6 py-2">
             <div className="space-y-4">
               {lines.map((l) => (
                 <div key={l.item.id} className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{l.item.name}</p>
-                    <p className="text-sm text-muted-foreground">{money(l.item.discount_price ?? l.item.price, shop.currency)}</p>
+                    <p className="truncate font-semibold text-[15px]">{l.item.name}</p>
+                    <p className={`text-sm font-medium ${theme.accentText}`}>{money(l.item.discount_price ?? l.item.price, shop.currency)}</p>
                   </div>
-                  <div className="flex items-center gap-3 rounded-full border px-2 py-1">
-                    <button aria-label="Remove one" onClick={() => change(l.item.id, -1)}>
+                  <div className={`flex items-center gap-3 rounded-md border ${theme.border} ${theme.bg} px-2 py-1`}>
+                    <button aria-label="Remove one" className={`${theme.textMuted} ${theme.textMutedHover}`} onClick={() => change(l.item.id, -1)}>
                       <Minus className="size-4" />
                     </button>
-                    <span className="w-4 text-center text-sm font-medium">{cart[l.item.id]}</span>
-                    <button aria-label="Add one" onClick={() => change(l.item.id, 1)}>
+                    <span className="w-5 text-center text-sm font-bold">{cart[l.item.id]}</span>
+                    <button aria-label="Add one" className={`${theme.textMuted} ${theme.textMutedHover}`} onClick={() => change(l.item.id, 1)}>
                       <Plus className="size-4" />
                     </button>
                   </div>
                 </div>
               ))}
-              
-              {lines.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground">Your cart is empty.</p>
-              )}
+              {lines.length === 0 && <p className={`text-center text-sm py-4 ${theme.textMuted}`}>Your cart is empty.</p>}
             </div>
 
             {lines.length > 0 && (
-              <>
-                <div className="space-y-3">
-                  <Label>Order Type</Label>
-                  <RadioGroup value={orderType} onValueChange={handleOrderTypeChange} className="flex gap-4">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="delivery" id="delivery" />
-                      <Label htmlFor="delivery">Delivery</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="takeaway" id="takeaway" />
-                      <Label htmlFor="takeaway">Take Away</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="on_table" id="on_table" />
-                      <Label htmlFor="on_table">On Table</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+              <div className={`pt-4 border-t ${theme.border}`}>
+                {(isDelivery || isTakeaway || isOnTable) && (
+                  <div className="space-y-3 mb-6">
+                    <Label className={`${theme.textMuted} uppercase text-xs tracking-wider font-bold`}>Order Type</Label>
+                    <RadioGroup value={orderType} onValueChange={handleOrderTypeChange} className="flex gap-4">
+                      {isDelivery && (
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="delivery" id="delivery" className={`${theme.border} ${theme.accentText}`} />
+                          <Label htmlFor="delivery" className="font-medium">Delivery</Label>
+                        </div>
+                      )}
+                      {isTakeaway && (
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="takeaway" id="takeaway" className={`${theme.border} ${theme.accentText}`} />
+                          <Label htmlFor="takeaway" className="font-medium">Take Away</Label>
+                        </div>
+                      )}
+                      {isOnTable && (
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="on_table" id="on_table" className={`${theme.border} ${theme.accentText}`} />
+                          <Label htmlFor="on_table" className="font-medium">On Table</Label>
+                        </div>
+                      )}
+                    </RadioGroup>
+                  </div>
+                )}
 
-                {orderType === "delivery" && (
-                  <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+                {orderType === "delivery" && isDelivery && (
+                  <div className={`space-y-4 rounded-xl border ${theme.border} ${theme.bg} p-4 mb-6`}>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="delivery-address">Delivery Address</Label>
+                        <Label htmlFor="delivery-address" className={`${theme.accentText} font-semibold`}>Delivery Address</Label>
                         <Button 
                           type="button" 
                           variant="secondary" 
                           size="sm" 
-                          className="h-7 text-xs bg-orange-100 text-orange-700 hover:bg-orange-200"
+                          className={`h-7 text-xs font-bold ${theme.cartBg} ${theme.cartText} opacity-90 hover:opacity-100`}
                           onClick={fetchLocation}
                           disabled={isLocating}
                         >
                           <MapPin className="mr-1 size-3" />
-                          {isLocating ? "Locating..." : "Use My Location"}
+                          {isLocating ? "Locating..." : "Use GPS"}
                         </Button>
                       </div>
                       <Textarea 
@@ -394,63 +438,51 @@ function PublicMenu() {
                         placeholder="House no., Street, Landmark" 
                         value={deliveryAddress}
                         onChange={(e) => setDeliveryAddress(e.target.value)}
+                        className={`bg-transparent ${theme.border} ${theme.text} placeholder:opacity-40`}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="delivery-city">City</Label>
+                        <Label htmlFor="delivery-city" className={theme.textMuted}>City</Label>
                         <Input 
                           id="delivery-city" 
                           placeholder="City" 
                           value={deliveryCity}
                           onChange={(e) => setDeliveryCity(e.target.value)}
+                          className={`bg-transparent ${theme.border} ${theme.text} placeholder:opacity-40`}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="delivery-pincode">Pincode</Label>
+                        <Label htmlFor="delivery-pincode" className={theme.textMuted}>Pincode</Label>
                         <Input 
                           id="delivery-pincode" 
                           placeholder="6-digit" 
                           value={deliveryPincode}
                           onChange={(e) => setDeliveryPincode(e.target.value)}
+                          className={`bg-transparent ${theme.border} ${theme.text} placeholder:opacity-40`}
                         />
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="customer-name">Your Name</Label>
-                  <Input 
-                    id="customer-name" 
-                    placeholder="e.g. Rahul Sharma" 
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customer-phone">WhatsApp Phone Number</Label>
-                  <Input 
-                    id="customer-phone" 
-                    placeholder="+91 98765 43210" 
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="special-instructions">Special Instructions (Optional)</Label>
-                  <Textarea 
-                    id="special-instructions" 
-                    placeholder="e.g. Less spicy, table number 4" 
-                    value={specialInstructions}
-                    onChange={(e) => setSpecialInstructions(e.target.value)}
-                  />
+                <div className="space-y-4 mb-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="customer-name" className={theme.textMuted}>Your Name</Label>
+                    <Input id="customer-name" placeholder="e.g. Rahul Sharma" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={`bg-transparent ${theme.border} ${theme.text} placeholder:opacity-40`} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="customer-phone" className={theme.textMuted}>WhatsApp Phone Number</Label>
+                    <Input id="customer-phone" placeholder="+91 98765 43210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className={`bg-transparent ${theme.border} ${theme.text} placeholder:opacity-40`} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="special-instructions" className={theme.textMuted}>Special Instructions (Optional)</Label>
+                    <Textarea id="special-instructions" placeholder="e.g. Less spicy, table number 4" value={specialInstructions} onChange={(e) => setSpecialInstructions(e.target.value)} className={`bg-transparent ${theme.border} ${theme.text} placeholder:opacity-40`} />
+                  </div>
                 </div>
 
                 <div className="pt-2">
-                  <Button asChild className="w-full">
+                  <Button asChild className={`w-full h-12 text-base font-bold rounded-xl ${theme.cartBg} ${theme.cartText} opacity-90 hover:opacity-100`}>
                     <a 
                       href={buildWhatsAppOrder(shop, lines, {
                         type: orderType,
@@ -463,12 +495,12 @@ function PublicMenu() {
                       rel="noreferrer"
                       onClick={() => setIsCartOpen(false)}
                     >
-                      <MessageCircle className="mr-2 size-4" /> 
+                      <MessageCircle className="mr-2 size-5" /> 
                       Send Order ({money(total, shop.currency)})
                     </a>
                   </Button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </DialogContent>
@@ -477,15 +509,18 @@ function PublicMenu() {
   );
 }
 
-function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function Chip({ label, active, onClick, theme }: { label: string; active: boolean; onClick: () => void, theme: any }) {
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm transition ${
-        active ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+      className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-medium transition-colors ${
+        active 
+          ? `border-transparent ${theme.accent} ${theme.cartText}` 
+          : `${theme.border} bg-transparent ${theme.textMuted} ${theme.textMutedHover}`
       }`}
     >
       {label}
-    </button>
+    </motion.button>
   );
 }

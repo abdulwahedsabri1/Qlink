@@ -18,9 +18,9 @@ import { money, planOf, type MenuItem } from "@/lib/shop";
 export const Route = createFileRoute("/_authenticated/menu")({
   head: () => ({
     meta: [
-      { title: "Menu Builder — MenuQR Pro" },
-      { name: "description", content: "Create categories and items for your digital QR menu." },
-      { property: "og:title", content: "Menu Builder — MenuQR Pro" },
+      { title: "Menu Builder — My QR Link" },
+      { name: "description", content: "Add categories and items to your digital menu." },
+      { property: "og:title", content: "Menu Builder — My QR Link" },
       { property: "og:description", content: "Create categories and items for your digital QR menu." },
     ],
   }),

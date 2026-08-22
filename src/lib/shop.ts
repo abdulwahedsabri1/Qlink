@@ -1,5 +1,24 @@
 export type Plan = "basic" | "pro" | "premium";
 export type ShopStatus = "active" | "suspended" | "expired";
+export type PaymentStatus = "paid" | "pending" | "overdue" | "not_paid" | "refunded" | "partially_paid";
+export type BillingCycle = "monthly" | "yearly";
+export type SubscriptionState = "active" | "payment_pending" | "grace_period" | "expired" | "suspended" | "cancelled";
+
+export const PAYMENT_STATUSES: { value: PaymentStatus; label: string; color: string }[] = [
+  { value: "paid", label: "Paid", color: "emerald" },
+  { value: "pending", label: "Pending", color: "yellow" },
+  { value: "overdue", label: "Overdue", color: "red" },
+  { value: "not_paid", label: "Not Paid", color: "slate" },
+  { value: "refunded", label: "Refunded", color: "blue" },
+  { value: "partially_paid", label: "Partially Paid", color: "orange" },
+];
+
+export const BILLING_CYCLES: { value: BillingCycle; label: string }[] = [
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+];
+
+export const PLAN_PRICE_YEARLY: Record<string, number> = { basic: 1999, pro: 4999, premium: 9999 };
 
 export type Shop = {
   id: string;
@@ -24,15 +43,111 @@ export type Shop = {
   payment_status?: string | null;
   amount_paid?: number | null;
   features?: Record<string, any> | null;
+  billing_cycle?: string | null;
+  grace_period_days?: number | null;
+  next_billing_date?: string | null;
+  auto_renew?: boolean | null;
 };
 
 export function shopTiming(shop?: Pick<Shop, "features"> | null) {
-  return shop?.features?.timing as string | undefined;
+  return shop?.features?.['timing'] as string | undefined;
 }
 
 export function shopSocialLink(shop?: Pick<Shop, "features"> | null) {
-  return shop?.features?.social_link as string | undefined;
+  return shop?.features?.['social_link'] as string | undefined;
 }
+
+export function shopDeliveryEnabled(shop?: Pick<Shop, "features"> | null) {
+  return shop?.features?.['delivery'] !== false;
+}
+
+export function shopTakeawayEnabled(shop?: Pick<Shop, "features"> | null) {
+  return shop?.features?.['takeaway'] !== false;
+}
+
+export function shopOnTableEnabled(shop?: Pick<Shop, "features"> | null) {
+  return shop?.features?.['on_table'] !== false;
+}
+
+export type ThemeId = "luxury_dark" | "minimalist_light" | "warm_amber";
+
+export function shopTheme(shop?: Pick<Shop, "features"> | null): ThemeId {
+  return (shop?.features?.['theme'] as ThemeId) || "luxury_dark";
+}
+
+export const THEME_CONFIG: Record<ThemeId, {
+  bg: string;
+  card: string;
+  text: string;
+  textMuted: string;
+  textMutedHover: string;
+  accent: string;
+  accentText: string;
+  border: string;
+  selection: string;
+  cartBg: string;
+  cartText: string;
+  cartBtn: string;
+  cartBtnHover: string;
+  addBtn: string;
+  addBtnHover: string;
+  headerGradient: string;
+}> = {
+  luxury_dark: {
+    bg: "bg-[#100C09]",
+    card: "bg-[#18120D]",
+    text: "text-white",
+    textMuted: "text-white/70",
+    textMutedHover: "hover:text-white",
+    accent: "bg-[#FFC45A]",
+    accentText: "text-[#FFC45A]",
+    border: "border-white/10",
+    selection: "selection:bg-[#FFC45A] selection:text-[#100C09]",
+    cartBg: "bg-[#FFC45A]",
+    cartText: "text-[#100C09]",
+    cartBtn: "bg-[#100C09]/10",
+    cartBtnHover: "hover:bg-[#100C09]/20",
+    addBtn: "bg-transparent border border-[#FFC45A]/30 text-[#FFC45A]",
+    addBtnHover: "hover:bg-[#FFC45A]/10",
+    headerGradient: "from-[#100C09] via-[#100C09]/60"
+  },
+  minimalist_light: {
+    bg: "bg-[#F5F0E7]",
+    card: "bg-white",
+    text: "text-[#100C09]",
+    textMuted: "text-[#3A2818]/70",
+    textMutedHover: "hover:text-[#100C09]",
+    accent: "bg-[#100C09]",
+    accentText: "text-[#100C09]",
+    border: "border-black/5",
+    selection: "selection:bg-[#100C09] selection:text-white",
+    cartBg: "bg-[#100C09]",
+    cartText: "text-white",
+    cartBtn: "bg-white/20",
+    cartBtnHover: "hover:bg-white/30",
+    addBtn: "bg-transparent border border-black/10 text-[#059669]",
+    addBtnHover: "hover:bg-black/5",
+    headerGradient: "from-[#F5F0E7] via-[#F5F0E7]/60"
+  },
+  warm_amber: {
+    bg: "bg-[#FFFAF5]",
+    card: "bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)]",
+    text: "text-[#100C09]",
+    textMuted: "text-[#100C09]/60",
+    textMutedHover: "hover:text-[#100C09]",
+    accent: "bg-[#D99A2B]",
+    accentText: "text-[#D99A2B]",
+    border: "border-[#D99A2B]/15",
+    selection: "selection:bg-[#D99A2B]/20 selection:text-[#D99A2B]",
+    cartBg: "bg-[#D99A2B]",
+    cartText: "text-white",
+    cartBtn: "bg-white/20",
+    cartBtnHover: "hover:bg-white/30",
+    addBtn: "bg-[#D99A2B] border-transparent text-white",
+    addBtnHover: "hover:bg-[#D99A2B]/90",
+    headerGradient: "from-[#FFFAF5] via-[#FFFAF5]/60"
+  }
+};
 
 export type Category = {
   id: string;
@@ -207,9 +322,63 @@ export function addMonths(from: Date, months: number) {
   return d;
 }
 
+export function addDays(from: Date, days: number) {
+  const d = new Date(from);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 export function toDateInput(value?: string | null) {
   if (!value) return "";
   return new Date(value).toISOString().slice(0, 10);
+}
+
+export function daysRemaining(shop?: Pick<Shop, "plan_expires_at"> | null): number {
+  if (!shop?.plan_expires_at) return Infinity;
+  const diff = new Date(shop.plan_expires_at).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / 86400000));
+}
+
+export function subscriptionState(shop?: Pick<Shop, "status" | "plan_expires_at" | "payment_status" | "grace_period_days"> | null): SubscriptionState {
+  if (!shop) return "expired";
+  if (shop.status === "suspended") return "suspended";
+  if (shop.status === "cancelled") return "cancelled";
+
+  const ps = shop.payment_status ?? "not_paid";
+  const expiry = shop.plan_expires_at ? new Date(shop.plan_expires_at).getTime() : null;
+  const now = Date.now();
+  const grace = (shop.grace_period_days ?? 7) * 86400000;
+
+  if (ps === "pending" || ps === "overdue") return "payment_pending";
+
+  if (expiry && expiry < now) {
+    if (now - expiry < grace) return "grace_period";
+    return "expired";
+  }
+
+  return "active";
+}
+
+export function subscriptionStateLabel(state: SubscriptionState): string {
+  const labels: Record<SubscriptionState, string> = {
+    active: "Active",
+    payment_pending: "Payment Pending",
+    grace_period: "Grace Period",
+    expired: "Expired",
+    suspended: "Suspended",
+    cancelled: "Cancelled",
+  };
+  return labels[state];
+}
+
+export function paymentStatusColor(status?: string | null) {
+  const found = PAYMENT_STATUSES.find((p) => p.value === status);
+  return found?.color ?? "slate";
+}
+
+export function planAmount(plan: string, cycle: string): number {
+  if (cycle === "yearly") return PLAN_PRICE_YEARLY[plan] ?? 0;
+  return PLAN_PRICE[plan] ?? 0;
 }
 
 /** Public, share-safe URL for a shop menu (editor previews require a login). */

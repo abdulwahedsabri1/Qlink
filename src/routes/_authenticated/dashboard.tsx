@@ -3,7 +3,17 @@ import type React from "react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BarChart3, ExternalLink, QrCode, UtensilsCrossed } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Copy,
+  ExternalLink,
+  QrCode,
+  UtensilsCrossed,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAnalytics, useIsAdmin, useMenuItems, useMyShop } from "@/hooks/useShopData";
@@ -11,14 +21,25 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDate, money, NICHES, planOf, PLAN_PRICE, slugify } from "@/lib/shop";
+import {
+  formatDate,
+  money,
+  NICHES,
+  planOf,
+  PLAN_PRICE,
+  slugify,
+  subscriptionState,
+  subscriptionStateLabel,
+  daysRemaining,
+  PAYMENT_STATUSES,
+} from "@/lib/shop";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — MenuQR Pro" },
-      { name: "description", content: "Manage your shop, menu and QR code from your MenuQR Pro dashboard." },
-      { property: "og:title", content: "Dashboard — MenuQR Pro" },
+      { title: "Dashboard — My QR Link" },
+      { name: "description", content: "Manage your shop, menu and QR code from your My QR Link dashboard." },
+      { property: "og:title", content: "Dashboard — My QR Link" },
       { property: "og:description", content: "Manage your shop, menu and QR code." },
     ],
   }),
@@ -49,29 +70,102 @@ function DashboardPage() {
             <Stat label="Menu items" value={items?.length ?? 0} icon={UtensilsCrossed} />
           </div>
 
-          <div className="rounded-2xl border bg-card p-6">
-            <h2 className="font-display text-lg font-semibold">{shop.name}</h2>
-            <p className="text-sm text-muted-foreground">
-              {shop.niche} · status {shop.status}
-            </p>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-4">
-              <Meta label="Plan" value={<span className="capitalize">{shop.plan}</span>} />
-              <Meta label="Started on" value={formatDate(shop.plan_started_at ?? shop.created_at)} />
-              <Meta label="Renews / ends" value={formatDate(shop.plan_expires_at)} />
-              <Meta
-                label="Payment"
-                value={
-                  shop.payment_status === "paid" ? (
-                    <span className="text-primary">Paid {money(Number(shop.amount_paid ?? PLAN_PRICE[shop.plan] ?? 0))}</span>
-                  ) : shop.plan === "basic" ? (
-                    <span className="text-muted-foreground">Free plan</span>
-                  ) : (
-                    <span className="text-destructive">Unpaid</span>
-                  )
-                }
-              />
+          {/* ── Payment Warning Banners ─── */}
+          {(shop.payment_status === "pending" || shop.payment_status === "overdue") && (
+            <div className={`flex items-start gap-3 rounded-2xl border p-4 ${shop.payment_status === "overdue" ? "border-red-500/30 bg-red-500/5" : "border-yellow-500/30 bg-yellow-500/5"}`}>
+              <AlertTriangle className={`mt-0.5 size-5 shrink-0 ${shop.payment_status === "overdue" ? "text-red-500" : "text-yellow-500"}`} />
+              <div>
+                <p className={`text-sm font-medium ${shop.payment_status === "overdue" ? "text-red-600" : "text-yellow-600"}`}>
+                  {shop.payment_status === "overdue" ? "Payment Overdue" : "Payment Pending"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your subscription payment of {money(Number(shop.amount_paid ?? PLAN_PRICE[shop.plan] ?? 0))} is {shop.payment_status}.
+                  {shop.payment_status === "pending" && " Please complete your payment before the due date."}
+                  {shop.payment_status === "overdue" && " Your subscription may be suspended soon."}
+                </p>
+              </div>
             </div>
+          )}
+
+          {shop.payment_status === "paid" && subscriptionState(shop) === "active" && (
+            <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-500" />
+              <div>
+                <p className="text-sm font-medium text-emerald-600">Subscription Active</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your payment has been confirmed. Enjoy your {shop.plan} plan!
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-2xl border bg-card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-lg font-semibold">{shop.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {shop.niche}
+                </p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                subscriptionState(shop) === "active" ? "bg-emerald-500/15 text-emerald-600" :
+                subscriptionState(shop) === "payment_pending" ? "bg-yellow-500/15 text-yellow-600" :
+                subscriptionState(shop) === "grace_period" ? "bg-orange-500/15 text-orange-600" :
+                subscriptionState(shop) === "suspended" ? "bg-red-500/15 text-red-600" :
+                "bg-slate-500/15 text-slate-600"
+              }`}>
+                {subscriptionStateLabel(subscriptionState(shop))}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Meta label="Plan" value={<span className="capitalize">{shop.plan}</span>} />
+              <Meta label="Payment" value={
+                shop.payment_status === "paid" ? (
+                  <span className="text-primary">Paid {money(Number(shop.amount_paid ?? PLAN_PRICE[shop.plan] ?? 0))}</span>
+                ) : shop.payment_status === "pending" ? (
+                  <span className="text-yellow-600">Pending</span>
+                ) : shop.payment_status === "overdue" ? (
+                  <span className="text-destructive">Overdue</span>
+                ) : shop.plan === "basic" ? (
+                  <span className="text-muted-foreground">Free plan</span>
+                ) : (
+                  <span className="text-muted-foreground">Not Paid</span>
+                )
+              } />
+              <Meta label="Billing" value={<span className="capitalize">{shop.billing_cycle ?? "monthly"}</span>} />
+              <Meta label="Expiry" value={formatDate(shop.plan_expires_at)} />
+            </div>
+
+            {/* Progress Bar - Days Remaining */}
+            {shop.plan_expires_at && daysRemaining(shop) !== Infinity && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                  <span>Subscription Progress</span>
+                  <span className="font-medium">
+                    {daysRemaining(shop) > 0
+                      ? `${daysRemaining(shop)} days remaining`
+                      : "Expired"}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      daysRemaining(shop) > 30 ? "bg-emerald-500" :
+                      daysRemaining(shop) > 7 ? "bg-yellow-500" :
+                      "bg-red-500"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(2, (daysRemaining(shop) / 365) * 100))}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Your <span className="capitalize font-medium">{shop.plan}</span> plan is
+                  {daysRemaining(shop) > 0
+                    ? ` active for ${daysRemaining(shop)} more days.`
+                    : " expired. Please contact admin to renew."}
+                </p>
+              </div>
+            )}
 
             <ul className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
               {[
@@ -147,6 +241,7 @@ function CreateShop({ userId }: { userId?: string | undefined }) {
       slug,
       niche,
       whatsapp: whatsapp.trim() || null,
+      status: "pending"
     });
     setSaving(false);
     if (error) {

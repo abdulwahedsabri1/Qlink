@@ -151,3 +151,64 @@ export function useAllStaff(enabled: boolean) {
     },
   });
 }
+
+export type SubscriptionHistoryRow = {
+  id: string;
+  shop_id: string;
+  action: string;
+  previous_value: string | null;
+  new_value: string | null;
+  performed_by: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export function useSubscriptionHistory(shopId?: string) {
+  return useQuery({
+    queryKey: ["subscription-history", shopId],
+    enabled: !!shopId,
+    queryFn: async (): Promise<SubscriptionHistoryRow[]> => {
+      const { data, error } = await supabase
+        .from("subscription_history")
+        .select("*")
+        .eq("shop_id", shopId!)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as SubscriptionHistoryRow[];
+    },
+  });
+}
+
+export type PaymentHistoryRow = {
+  id: string;
+  shop_id: string;
+  invoice_id: string;
+  amount: number;
+  plan: string;
+  billing_cycle: string;
+  payment_status: string;
+  payment_method: string | null;
+  transaction_id: string | null;
+  payment_date: string | null;
+  due_date: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export function usePaymentHistory(shopId?: string) {
+  return useQuery({
+    queryKey: ["payment-history", shopId],
+    enabled: !!shopId,
+    queryFn: async (): Promise<PaymentHistoryRow[]> => {
+      const { data, error } = await supabase
+        .from("payment_history")
+        .select("*")
+        .eq("shop_id", shopId!)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as PaymentHistoryRow[];
+    },
+  });
+}

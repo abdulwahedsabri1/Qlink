@@ -6,9 +6,9 @@ import { DashboardShell } from "@/components/DashboardShell";
 export const Route = createFileRoute("/_authenticated/analytics")({
   head: () => ({
     meta: [
-      { title: "Analytics — MenuQR Pro" },
-      { name: "description", content: "See menu views, QR scans and device mix for your shop." },
-      { property: "og:title", content: "Analytics — MenuQR Pro" },
+      { title: "Analytics — My QR Link" },
+      { name: "description", content: "Track views and scans." },
+      { property: "og:title", content: "Analytics — My QR Link" },
       { property: "og:description", content: "See menu views, QR scans and device mix." },
     ],
   }),

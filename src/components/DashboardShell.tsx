@@ -7,11 +7,13 @@ import {
   Settings,
   Shield,
   UtensilsCrossed,
+  Clock
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useMyShop } from "@/hooks/useShopData";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -36,6 +38,8 @@ export function DashboardShell({
 }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: shop } = useMyShop();
+  const isPending = shop?.status === "pending";
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -49,10 +53,10 @@ export function DashboardShell({
           <span className="grid size-9 place-items-center rounded-xl bg-emerald-gradient text-sidebar-primary-foreground">
             <QrCode className="size-5" />
           </span>
-          <span className="font-display text-lg font-semibold">MenuQR Pro</span>
+          <span className="font-display text-lg font-semibold">My QR Link</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV.map((item) => (
+          {!isPending && NAV.map((item) => (
             <Link
               key={item.to}
               to={item.to}
@@ -93,7 +97,7 @@ export function DashboardShell({
             <div className="flex items-center gap-2">{actions}</div>
           </div>
           <nav className="mt-4 flex gap-1 overflow-x-auto no-scrollbar lg:hidden">
-            {[...NAV, ...(isAdmin ? [{ to: "/admin", label: "Admin", icon: Shield } as const] : [])].map(
+            {!isPending && [...NAV, ...(isAdmin ? [{ to: "/admin", label: "Admin", icon: Shield } as const] : [])].map(
               (item) => (
                 <Link
                   key={item.to}
@@ -109,7 +113,24 @@ export function DashboardShell({
             )}
           </nav>
         </header>
-        <main className="flex-1 p-5 lg:p-8">{children}</main>
+        <main className="flex-1 p-5 lg:p-8">
+          {isPending ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border bg-card p-12 text-center mt-8">
+              <div className="rounded-full bg-yellow-500/10 p-4">
+                <Clock className="size-10 text-yellow-500" />
+              </div>
+              <h2 className="mt-6 font-display text-2xl font-bold">Application Under Review</h2>
+              <p className="mx-auto mt-2 max-w-md text-muted-foreground">
+                Thank you for creating your business with My QR Link! Your application has been received and is currently being reviewed by our team.
+              </p>
+              <p className="mt-4 text-sm font-medium text-muted-foreground">
+                Please check back later or wait for an approval email.
+              </p>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

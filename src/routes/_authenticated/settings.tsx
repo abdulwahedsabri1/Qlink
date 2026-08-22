@@ -9,14 +9,15 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NICHES, shopTiming, shopSocialLink } from "@/lib/shop";
+import { Switch } from "@/components/ui/switch";
+import { NICHES, shopTiming, shopSocialLink, shopDeliveryEnabled, shopTakeawayEnabled, shopOnTableEnabled, shopTheme, type ThemeId } from "@/lib/shop";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
-      { title: "Shop Settings — MenuQR Pro" },
+      { title: "Shop Settings — My QR Link" },
       { name: "description", content: "Update your shop name, branding, WhatsApp number and currency." },
-      { property: "og:title", content: "Shop Settings — MenuQR Pro" },
+      { property: "og:title", content: "Shop Settings — My QR Link" },
       { property: "og:description", content: "Update your shop branding and contact details." },
     ],
   }),
@@ -38,6 +39,10 @@ function SettingsPage() {
     currency: "₹",
     timing: "",
     social_link: "",
+    delivery: true,
+    takeaway: true,
+    on_table: true,
+    theme: "luxury_dark" as ThemeId,
   });
   const [saving, setSaving] = useState(false);
 
@@ -53,6 +58,10 @@ function SettingsPage() {
       currency: shop.currency ?? "₹",
       timing: shopTiming(shop) ?? "",
       social_link: shopSocialLink(shop) ?? "",
+      delivery: shopDeliveryEnabled(shop),
+      takeaway: shopTakeawayEnabled(shop),
+      on_table: shopOnTableEnabled(shop),
+      theme: shopTheme(shop),
     });
   }, [shop]);
 
@@ -65,12 +74,17 @@ function SettingsPage() {
       ...currentFeatures,
       timing: form.timing.trim() || undefined,
       social_link: form.social_link.trim() || undefined,
+      delivery: form.delivery,
+      takeaway: form.takeaway,
+      on_table: form.on_table,
+      theme: form.theme,
     };
     
     // Clean up undefined properties from features before saving
     Object.keys(updatedFeatures).forEach(key => {
-      if (updatedFeatures[key] === undefined) {
-        delete updatedFeatures[key];
+      const k = key as keyof typeof updatedFeatures;
+      if (updatedFeatures[k] === undefined) {
+        delete updatedFeatures[k];
       }
     });
 
@@ -137,7 +151,107 @@ function SettingsPage() {
           <Text id="s-social" label="Social Media Link (e.g. Instagram URL)" value={form.social_link} onChange={(v) => setForm({ ...form, social_link: v })} />
           <Text id="s-cur" label="Currency symbol" value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} />
 
-          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
+              <h3 className="font-medium text-lg border-b pb-2">Appearance & Theme</h3>
+              
+              <div className="space-y-3">
+                <Label>Menu Theme</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  
+                  {/* Luxury Dark */}
+                  <div 
+                    className={`cursor-pointer rounded-xl border-2 p-3 transition-all ${form.theme === 'luxury_dark' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                    onClick={() => setForm({ ...form, theme: 'luxury_dark' })}
+                  >
+                    <div className="aspect-[3/4] w-full bg-[#100C09] rounded-lg mb-3 p-3 flex flex-col items-center overflow-hidden border border-border/50">
+                      <div className="w-full bg-[#18120D] h-6 rounded-md mb-2 flex items-center px-2">
+                        <div className="size-3 bg-[#FFC45A] rounded-sm mr-2" />
+                        <div className="h-1.5 w-16 bg-white/20 rounded-full" />
+                      </div>
+                      <div className="w-full bg-[#18120D] h-6 rounded-md flex items-center px-2">
+                        <div className="size-3 bg-[#FFC45A] rounded-sm mr-2" />
+                        <div className="h-1.5 w-12 bg-white/20 rounded-full" />
+                      </div>
+                      <div className="mt-auto w-full h-4 bg-[#FFC45A] rounded-md" />
+                    </div>
+                    <p className="font-semibold text-sm">Luxury Dark</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Perfect for fine dining and premium services.</p>
+                  </div>
+                  
+                  {/* Minimalist Light */}
+                  <div 
+                    className={`cursor-pointer rounded-xl border-2 p-3 transition-all ${form.theme === 'minimalist_light' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                    onClick={() => setForm({ ...form, theme: 'minimalist_light' })}
+                  >
+                    <div className="aspect-[3/4] w-full bg-[#F5F0E7] rounded-lg mb-3 p-3 flex flex-col items-center overflow-hidden border border-border/50">
+                      <div className="w-full bg-white h-6 rounded-md mb-2 flex items-center px-2 shadow-sm border border-black/5">
+                        <div className="size-3 bg-[#100C09] rounded-sm mr-2" />
+                        <div className="h-1.5 w-16 bg-black/10 rounded-full" />
+                      </div>
+                      <div className="w-full bg-white h-6 rounded-md flex items-center px-2 shadow-sm border border-black/5">
+                        <div className="size-3 bg-[#100C09] rounded-sm mr-2" />
+                        <div className="h-1.5 w-12 bg-black/10 rounded-full" />
+                      </div>
+                      <div className="mt-auto w-full h-4 bg-[#100C09] rounded-md" />
+                    </div>
+                    <p className="font-semibold text-sm">Minimalist Light</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Clean, airy, and modern. Great for cafes.</p>
+                  </div>
+                  
+                  {/* Warm Amber */}
+                  <div 
+                    className={`cursor-pointer rounded-xl border-2 p-3 transition-all ${form.theme === 'warm_amber' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                    onClick={() => setForm({ ...form, theme: 'warm_amber' })}
+                  >
+                    <div className="aspect-[3/4] w-full bg-[#FFFAF5] rounded-lg mb-3 p-3 flex flex-col items-center overflow-hidden border border-border/50 shadow-sm">
+                      <div className="w-full bg-white h-6 rounded-full mb-2 flex items-center px-2 border border-[#D99A2B]/15">
+                        <div className="size-3 bg-[#D99A2B] rounded-full mr-2" />
+                        <div className="h-1.5 w-16 bg-black/20 rounded-full" />
+                      </div>
+                      <div className="w-full bg-white h-6 rounded-full flex items-center px-2 border border-[#D99A2B]/15">
+                        <div className="size-3 bg-[#D99A2B] rounded-full mr-2" />
+                        <div className="h-1.5 w-12 bg-black/20 rounded-full" />
+                      </div>
+                      <div className="mt-auto w-full h-4 bg-[#D99A2B] rounded-full" />
+                    </div>
+                    <p className="font-semibold text-sm">Warm Amber</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Inviting and elegant, perfect for retail.</p>
+                  </div>
+                  
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-medium text-lg border-b pb-2">Ordering Features</h3>
+            <p className="text-sm text-muted-foreground">Select which order types are available to customers.</p>
+            
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="delivery-toggle" className="text-base">Delivery</Label>
+                <p className="text-sm text-muted-foreground">Allow customers to request delivery.</p>
+              </div>
+              <Switch id="delivery-toggle" checked={form.delivery} onCheckedChange={(v) => setForm({ ...form, delivery: v })} />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="takeaway-toggle" className="text-base">Take Away</Label>
+                <p className="text-sm text-muted-foreground">Allow customers to pick up their orders.</p>
+              </div>
+              <Switch id="takeaway-toggle" checked={form.takeaway} onCheckedChange={(v) => setForm({ ...form, takeaway: v })} />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="on-table-toggle" className="text-base">On Table</Label>
+                <p className="text-sm text-muted-foreground">Allow customers to order directly to their table.</p>
+              </div>
+              <Switch id="on-table-toggle" checked={form.on_table} onCheckedChange={(v) => setForm({ ...form, on_table: v })} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t">
             <div className="space-y-2">
               <Label htmlFor="s-logo">Logo</Label>
               <Input id="s-logo" type="file" accept="image/*" onChange={(e) => upload("logo_url", e.target.files?.[0])} />

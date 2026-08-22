@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { QrCode } from "lucide-react";
+import { QrCode, Store, User, Mail, Phone, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,15 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NICHES, slugify } from "@/lib/shop";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — MenuQR Pro" },
-      { name: "description", content: "Log in or create your MenuQR Pro account to build a QR menu for your business." },
-      { property: "og:title", content: "Sign in — MenuQR Pro" },
-      { property: "og:description", content: "Log in or create your MenuQR Pro account." },
+      { title: "Sign in — My QR Link" },
+      { name: "description", content: "Log in or create your My QR Link account to build a QR menu for your business." },
+      { property: "og:title", content: "Sign in — My QR Link" },
+      { property: "og:description", content: "Log in or create your My QR Link account." },
     ],
   }),
   component: AuthPage,
@@ -33,6 +34,9 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [niche, setNiche] = useState(NICHES[0]!);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -82,7 +86,12 @@ function AuthPage() {
           password: parsed.data.password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: name.trim() },
+            data: { 
+              full_name: name.trim(),
+              business_name: businessName.trim(),
+              phone: phone.trim(),
+              niche: niche
+            },
           },
         });
         if (error) {
@@ -93,7 +102,17 @@ function AuthPage() {
           );
           return;
         }
-        if (data.session) navigate({ to: "/dashboard", replace: true });
+        if (data.session) {
+          await supabase.from("shops").insert({
+            owner_id: data.user.id,
+            name: businessName.trim(),
+            slug: `${slugify(businessName.trim())}-${Math.random().toString(36).slice(2, 6)}`,
+            niche: niche,
+            whatsapp: phone.trim() || null,
+            status: 'pending'
+          });
+          navigate({ to: "/dashboard", replace: true });
+        }
         else toast.success("Check your email to confirm your account.");
       }
     } catch (err) {
@@ -117,23 +136,22 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between bg-hero-gradient p-12 text-primary-foreground lg:flex">
-        <Link to="/" className="flex items-center gap-2 text-background">
-          <span className="grid size-9 place-items-center rounded-xl bg-emerald-gradient">
-            <QrCode className="size-5 text-primary-foreground" />
-          </span>
-          <span className="font-display text-lg font-semibold">MenuQR Pro</span>
+      <div className="relative hidden flex-col justify-between bg-hero-gradient p-12 text-white lg:flex">
+        <Link to="/" className="flex items-center gap-2 text-white">
+          <div className="relative z-20 flex items-center gap-2 font-display text-xl font-bold">
+          <QrCode className="size-8 text-primary" /> My QR Link
+        </div>
         </Link>
-        <div className="max-w-md text-background">
-          <h2 className="font-display text-4xl font-semibold leading-tight">
+        <div className="max-w-2xl text-white mt-12">
+          <h2 className="font-display text-5xl lg:text-6xl font-semibold leading-[1.1] tracking-tight">
             One QR code. Your entire business, on every phone.
           </h2>
-          <p className="mt-4 text-background/70">
-            Restaurants, salons, bakeries and boutiques use MenuQR Pro to publish live menus and
-            catalogs customers can order from on WhatsApp.
+          <p className="mt-6 text-lg lg:text-xl text-white/70 leading-relaxed font-medium">
+            Restaurants, salons, bakeries and boutiques use My QR Link to publish live digital experiences and
+            engage customers without limits.
           </p>
         </div>
-        <p className="text-sm text-background/50">Trusted by local businesses across India.</p>
+        <p className="text-sm font-medium text-white/50">Trusted by local businesses across India.</p>
       </div>
 
       <div className="flex items-center justify-center p-6">
@@ -157,12 +175,40 @@ function AuthPage() {
               </Button>
             </TabsContent>
 
-            <TabsContent value="signup" className="mt-6 space-y-4">
-              <Field id="name" label="Your name" value={name} onChange={setName} />
-              <Field id="email2" label="Email" value={email} onChange={setEmail} type="email" />
-              <Field id="password2" label="Password" value={password} onChange={setPassword} type="password" />
-              <Button className="w-full" disabled={loading} onClick={() => handle("signup")}>
-                Create free account
+            <TabsContent value="signup" className="mt-6 space-y-5">
+              <div className="text-center mb-6">
+                <h2 className="font-display text-2xl font-bold">Create Your Business</h2>
+                <p className="text-muted-foreground mt-1 text-sm">Get your unique QR code and digital menu in seconds</p>
+              </div>
+
+              <Field id="businessName" label="Business Name" value={businessName} onChange={setBusinessName} placeholder="e.g. Gourmet Bistro" icon={Store} />
+              <Field id="name" label="Owner Full Name" value={name} onChange={setName} placeholder="John Doe" icon={User} />
+              <Field id="email2" label="Email Address" value={email} onChange={setEmail} type="email" placeholder="john@business.com" icon={Mail} />
+              <Field id="password2" label="Password" value={password} onChange={setPassword} type="password" placeholder="••••••••" icon={Lock} />
+              <Field id="phone" label="WhatsApp / Phone Number" value={phone} onChange={setPhone} placeholder="+1 555 019 2838" icon={Phone} />
+              
+              <div className="space-y-3 pt-2">
+                <Label className="font-semibold text-muted-foreground">Business Niche</Label>
+                <div className="flex flex-wrap gap-2">
+                  {NICHES.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setNiche(n)}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors border ${
+                        niche === n
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-transparent text-muted-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Button className="w-full h-12 text-base font-bold mt-6" disabled={loading} onClick={() => handle("signup")}>
+                Launch Digital Store <ArrowRight className="ml-2 size-5" />
               </Button>
             </TabsContent>
           </Tabs>
@@ -185,17 +231,35 @@ function Field({
   value,
   onChange,
   type = "text",
+  placeholder,
+  icon: Icon
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  placeholder?: string;
+  icon?: React.ElementType;
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Label htmlFor={id} className="font-semibold text-muted-foreground">{label}</Label>
+      <div className="relative">
+        {Icon && (
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+            <Icon className="size-4" />
+          </div>
+        )}
+        <Input 
+          id={id} 
+          type={type} 
+          value={value} 
+          onChange={(e) => onChange(e.target.value)} 
+          placeholder={placeholder}
+          className={Icon ? "pl-9" : ""}
+        />
+      </div>
     </div>
   );
 }

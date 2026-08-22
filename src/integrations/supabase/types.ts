@@ -176,14 +176,18 @@ export type Database = {
         Row: {
           address: string | null
           amount_paid: number
+          auto_renew: boolean
+          billing_cycle: string
           cover_url: string | null
           created_at: string
           currency: string
           description: string | null
           features: Json
+          grace_period_days: number
           id: string
           logo_url: string | null
           name: string
+          next_billing_date: string | null
           niche: string
           owner_id: string
           payment_status: string
@@ -201,14 +205,18 @@ export type Database = {
         Insert: {
           address?: string | null
           amount_paid?: number
+          auto_renew?: boolean
+          billing_cycle?: string
           cover_url?: string | null
           created_at?: string
           currency?: string
           description?: string | null
           features?: Json
+          grace_period_days?: number
           id?: string
           logo_url?: string | null
           name: string
+          next_billing_date?: string | null
           niche?: string
           owner_id: string
           payment_status?: string
@@ -226,14 +234,18 @@ export type Database = {
         Update: {
           address?: string | null
           amount_paid?: number
+          auto_renew?: boolean
+          billing_cycle?: string
           cover_url?: string | null
           created_at?: string
           currency?: string
           description?: string | null
           features?: Json
+          grace_period_days?: number
           id?: string
           logo_url?: string | null
           name?: string
+          next_billing_date?: string | null
           niche?: string
           owner_id?: string
           payment_status?: string
@@ -249,6 +261,103 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: []
+      }
+      subscription_history: {
+        Row: {
+          id: string
+          shop_id: string
+          action: string
+          previous_value: string | null
+          new_value: string | null
+          performed_by: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          shop_id: string
+          action: string
+          previous_value?: string | null
+          new_value?: string | null
+          performed_by?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          shop_id?: string
+          action?: string
+          previous_value?: string | null
+          new_value?: string | null
+          performed_by?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_history_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_history: {
+        Row: {
+          id: string
+          shop_id: string
+          invoice_id: string
+          amount: number
+          plan: string
+          billing_cycle: string
+          payment_status: string
+          payment_method: string | null
+          transaction_id: string | null
+          payment_date: string | null
+          due_date: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          shop_id: string
+          invoice_id?: string
+          amount?: number
+          plan?: string
+          billing_cycle?: string
+          payment_status?: string
+          payment_method?: string | null
+          transaction_id?: string | null
+          payment_date?: string | null
+          due_date?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          shop_id?: string
+          invoice_id?: string
+          amount?: number
+          plan?: string
+          billing_cycle?: string
+          payment_status?: string
+          payment_method?: string | null
+          transaction_id?: string | null
+          payment_date?: string | null
+          due_date?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff: {
         Row: {
